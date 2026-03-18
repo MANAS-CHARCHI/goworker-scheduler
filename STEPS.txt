@@ -1,0 +1,6 @@
+go mod init goworker
+
+install packages:
+    go get github.com/redis/go-redis/v9
+    go get github.com/gin-gonic/gin
+    go get github.com/lib/pq
