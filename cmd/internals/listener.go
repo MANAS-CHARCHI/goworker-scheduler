@@ -24,7 +24,7 @@ func Listener(ctx context.Context, cfg Config, db *sql.DB, rdb *redis.Client, wa
 func pushJobToRedis(ctx context.Context, db *sql.DB, rdb *redis.Client, jobID string, table string) error {
 	var runAt time.Time
 	err := db.QueryRowContext(ctx, fmt.Sprintf(`
-		SELECT next_executed_at FROM %s WHERE id = $1 AND status = 'active';
+		SELECT COALESCE(next_executed_at, execution_time) FROM %s WHERE id = $1 AND status = 'ACTIVE';
 	`, table), jobID).Scan(&runAt)
 	if err == sql.ErrNoRows {
 		return nil // job cancelled or already done

@@ -12,14 +12,13 @@ import (
 func BuildRedisSortedSet(ctx context.Context, db *sql.DB, rdb *redis.Client, table string) error {
 	rows, err := db.QueryContext(ctx, fmt.Sprintf(`
 	SELECT id, next_executed_at FROM %s
-	WHERE status = 'active'
-	AND next_executed_at > NOW()
+	WHERE status = 'ACTIVE'
+	AND COALESCE(next_executed_at, execution_time) > NOW()
 	ORDER BY next_executed_at ASC;`, table))
 	if err != nil {
-		return err
+		return fmt.Errorf("query execution failed: %w", err)
 	}
 	defer rows.Close()
-
 	var members []redis.Z
 	for rows.Next() {
 		var id string

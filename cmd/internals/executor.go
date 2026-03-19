@@ -129,7 +129,7 @@ func FetchJobs(ctx context.Context, db *sql.DB, table string, ids []string) ([]J
 		JOIN scheduler_webhook_data w ON w.id = s.webhook_id
 		LEFT JOIN scheduler_callback_data c ON c.id = s.callback_id
 		WHERE s.id IN (%s)
-		AND s.status = 'active'
+		AND s.status = 'ACTIVE'
 	`, table, strings.Join(placeholders, ","))
 
 	rows, err := db.QueryContext(ctx, query, args...)
@@ -148,11 +148,12 @@ func FetchJobs(ctx context.Context, db *sql.DB, table string, ids []string) ([]J
 		var callbackURL sql.NullString
 		var callbackTimeoutSeconds sql.NullInt32
 		var lastExecutedAt sql.NullTime
+		var nextExecutedAt sql.NullTime
 		err := rows.Scan(
 			&j.ID,
 			&j.Name,
 			&payloadJSON,
-			&j.NextExecutedAt,
+			&nextExecutedAt,
 			&j.ScheduleType,
 			&repeatOn,
 			&j.MaxRetry,
@@ -199,6 +200,7 @@ func ExecuteJob(ctx context.Context, db *sql.DB, rdb *redis.Client, table string
 	if maxRetry == 0 {
 		maxRetry = MaxRetries
 	}
+	var errMsg = ""
 	for attempt := 1; attempt <= maxRetry; attempt++ {
 		log.Printf("job %d: attempt %d/%d", job.ID, attempt, maxRetry)
 		start := time.Now()
@@ -234,13 +236,13 @@ func ExecuteJob(ctx context.Context, db *sql.DB, rdb *redis.Client, table string
 		if lastErr != nil {
 			errMsg = lastErr.Error()
 		}
-		log.Printf("job %d: all retries exhausted: %s", job.ID, errMsg)
+	}
+	log.Printf("job %d: all retries exhausted: %s", job.ID, errMsg)
 
-		UpdateAfterFailure(ctx, db, table, job.ID)
+	UpdateAfterFailure(ctx, db, table, job.ID)
 
-		if job.CallbackURL != nil && *job.CallbackURL != "" {
-			go FireCallback(job, "failed", statusCode, errMsg)
-		}
+	if job.CallbackURL != nil && *job.CallbackURL != "" {
+		go FireCallback(job, "failed", statusCode, errMsg)
 	}
 }
 

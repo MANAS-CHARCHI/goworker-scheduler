@@ -4,3 +4,7 @@ install packages:
     go get github.com/redis/go-redis/v9
     go get github.com/gin-gonic/gin
     go get github.com/lib/pq
+
+
+To get the rds access
+curl -o global-bundle.pem https://truststore.pki.rds.amazonaws.com/global/global-bundle.pem
